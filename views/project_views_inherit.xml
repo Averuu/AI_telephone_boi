@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- 1. Кнопка на главном канбане проектов -->
+    <record id="view_project_kanban_inherit" model="ir.ui.view">
+        <field name="name">project.project.kanban.inherit</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.view_project_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban" position="inside">
+                <header>
+                    <button name="open_custom_wizard" string="Открыть Wizard" type="object" class="btn btn-primary"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- 2. Кнопка внутри формы открытой задачи -->
+    <record id="view_task_form_inherit" model="ir.ui.view">
+        <field name="name">project.task.form.inherit</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="open_custom_wizard" string="Вызвать Мастер" type="object" class="btn btn-primary"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

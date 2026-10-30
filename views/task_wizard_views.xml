@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_task_wizard_form" model="ir.ui.view">
+        <field name="name">task.wizard.form</field>
+        <field name="model">task.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Мастер действий">
+                <field name="message"/>
+                <footer>
+                    <button name="action_one" string="Заглушка 1" type="object" class="btn-primary"/>
+                    <button name="action_two" string="Заглушка 2" type="object" class="btn-secondary"/>
+                    <button name="action_three" string="Заглушка 3" type="object" class="btn-secondary"/>
+                    <button string="Отмена" class="btn-text" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>
