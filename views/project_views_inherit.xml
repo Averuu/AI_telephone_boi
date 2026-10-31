@@ -1,15 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- 1. Кнопка на главном канбане проектов -->
-    <record id="view_project_kanban_inherit" model="ir.ui.view">
-        <field name="name">project.project.kanban.inherit</field>
-        <field name="model">project.project</field>
-        <field name="inherit_id" ref="project.view_project_kanban"/>
+    <!-- 1. Глобальная кнопка в Control Panel на Канбан-доске задач проекта -->
+    <record id="view_task_kanban_inherit" model="ir.ui.view">
+        <field name="name">project.task.kanban.inherit</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_kanban"/>
         <field name="arch" type="xml">
-            <xpath expr="//kanban" position="inside">
-                <header>
-                    <button name="open_custom_wizard" string="Открыть Wizard" type="object" class="btn btn-primary"/>
-                </header>
+            <!-- В Odoo 20.0 для добавления кнопок на доску используется xpath к control_panel -->
+            <xpath expr="//control_panel" position="inside">
+                <button name="open_custom_wizard" string="Анализ рисков проекта" type="object" class="btn btn-primary"/>
             </xpath>
         </field>
     </record>
@@ -21,7 +20,7 @@
         <field name="inherit_id" ref="project.view_task_form2"/>
         <field name="arch" type="xml">
             <xpath expr="//header" position="inside">
-                <button name="open_custom_wizard" string="Вызвать Мастер" type="object" class="btn btn-primary"/>
+                <button name="open_custom_wizard" string="Анализ риска задачи" type="object" class="btn btn-primary"/>
             </xpath>
         </field>
     </record>

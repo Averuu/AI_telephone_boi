@@ -1,21 +1,24 @@
-from odoo import models, fields
+from odoo import models
 
-class TaskWizard(models.TransientModel):
-    _name = 'task.wizard'
-    _description = 'Task Master Wizard'
+class ProjectTask(models.Model):
+    _inherit = 'project.task'
 
-    # Текст, который будет отображаться внутри мастера
-    message = fields.Text(string="Сообщение", default="Выберите действие для продолжения:", readonly=True)
+    def open_custom_wizard(self):
+        """Этот метод сработает и на канбан-доске задач, и внутри формы задачи"""
+        if not self:
+            # Нажата кнопка на канбан-доске (запись не выбрана)
+            message = "Вы запустили мастер с Канбан-доски задач проекта!"
+            title = "Действие из доски задач"
+        else:
+            # Нажата кнопка внутри формы конкретной задачи
+            message = f"Вы запустили мастер из задачи: {self.name}"
+            title = "Действие из Задачи"
 
-    # Кнопки-заглушки будут вызывать методы ниже
-    def action_one(self):
-        # Логика для кнопки 1
-        return {'type': 'ir.actions.act_window_close'}
-
-    def action_two(self):
-        # Логика для кнопки 2
-        return {'type': 'ir.actions.act_window_close'}
-
-    def action_three(self):
-        # Логика для кнопки 3
-        return {'type': 'ir.actions.act_window_close'}
+        return {
+            'name': title,
+            'type': 'ir.actions.act_window',
+            'res_model': 'task.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+            'context': {'default_message': message}
+        }
