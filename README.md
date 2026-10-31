@@ -1,4 +1,4 @@
-++--# taskmaster — ИИ-агент управления рисками для Odoo 20.0
+# taskmaster — ИИ-агент управления рисками для Odoo 20.0
 
 > Документ рассчитан и на людей, и на ИИ-агента, который продолжит разработку.
 > Если ты агент: сначала прочитай разделы 1, 4, 9 и 10. Версия Odoo — **20.0**, многие API
@@ -180,9 +180,9 @@ print(env['taskmaster.agent'].analyze_project(project))        # готовый 
 
 ```python
 icp = env['ir.config_parameter'].sudo()
-icp.set_param('taskmaster.api_key', '<ключ>')
-icp.set_param('taskmaster.api_url', 'https://api.openai.com/v1/chat/completions')  # необязательно
-icp.set_param('taskmaster.model', 'gpt-4o-mini')                                    # необязательно
+icp.set_str('taskmaster.api_key', '<ключ>')        # в 20.0 set_param/get_param удалены
+icp.set_str('taskmaster.api_url', 'https://api.openai.com/v1/chat/completions')  # необязательно
+icp.set_str('taskmaster.model', 'gpt-4o-mini')                                    # необязательно
 env.cr.commit()
 ```
 
@@ -289,7 +289,10 @@ class TestTaskmasterAgent(TransactionCase):
 4. **Синтаксис view:** условия пишутся inline (`invisible="scope != 'project'"`), а не через `attrs`.
    Корневой тег list-view по сторонним источникам с 19.0 — `<list>`, а не `<tree>`; для 20.0 используйте `<list>`.
 5. **Кнопка типа `object` закрывает диалог**, если метод не вернул action (см. `action_run`).
-6. **Правило для работы:** перед использованием любого API из памяти (ORM, права, view, поля `project.*`)
+6. **`ir.config_parameter`:** в 20.0 методов `get_param`/`set_param` нет (`AttributeError`). Используйте типизированные
+   `get_str/get_bool/get_int/get_float` и `set_str/set_bool/set_int/set_float`. В коде чтение идёт через
+   `taskmaster.agent._config()`. Источник: обсуждения миграции на 20.0 на GitHub, официальную страницу не проверял.
+7. **Правило для работы:** перед использованием любого API из памяти (ORM, права, view, поля `project.*`)
    сверьтесь с документацией 20.0. Многое менялось.
 
 ---

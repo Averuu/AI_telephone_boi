@@ -59,6 +59,18 @@ class TaskmasterAgent(models.AbstractModel):
             'no_deadline': _('No deadline'),
         }
 
+    @api.model
+    def _config(self, key, default=''):
+        """Read a system parameter.
+
+        Odoo 20.0 removed ir.config_parameter.get_param/set_param in favour of typed
+        get_str/get_bool/get_int/get_float (and set_*). We fall back to get_param so the
+        module still works on 19.0.
+        """
+        icp = self.env['ir.config_parameter'].sudo()
+        getter = getattr(icp, 'get_str', None) or icp.get_param
+        return getter(key) or default
+
     @staticmethod
     def _val(record, fname, default=None):
         return record[fname] if fname in record._fields else default
@@ -199,12 +211,11 @@ class TaskmasterAgent(models.AbstractModel):
     # ------------------------------------------------------------------
     @api.model
     def _call_llm(self, kind, payload):
-        icp = self.env['ir.config_parameter'].sudo()
-        api_key = icp.get_param('taskmaster.api_key')
+        api_key = self._config('taskmaster.api_key')
         if not api_key:
             return False
-        url = icp.get_param('taskmaster.api_url') or 'https://api.openai.com/v1/chat/completions'
-        model = icp.get_param('taskmaster.model') or 'gpt-4o-mini'
+        url = self._config('taskmaster.api_url') or 'https://api.openai.com/v1/chat/completions'
+        model = self._config('taskmaster.model') or 'gpt-4o-mini'
         lang = self.env.user.lang or 'en_US'
         system = (
             "You are a risk-management assistant for Odoo Project. "
