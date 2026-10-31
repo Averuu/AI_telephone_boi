@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Docs: .../tutorials/server_framework_101/05_firstui.html
+   - UI is defined by records in XML data files; pattern: Menu > Action > View
+   - an action is a record of ir.actions.act_window (res_model, view_mode)
+  Docs: .../reference/backend/actions.html
+   - 'target': current / fullscreen / new (dialog/popup)
+-->
+<odoo>
+    <record id="taskmaster_risk_wizard_form" model="ir.ui.view">
+        <field name="name">taskmaster.risk.wizard.form</field>
+        <field name="model">taskmaster.risk.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Taskmaster — Risk agent">
+                <field name="scope" invisible="1"/>
+                <div class="alert alert-info" role="alert" invisible="scope != 'project'">
+                    <strong>Taskmaster Risk Agent.</strong>
+                    Reviews the tasks of the selected project (deadlines, assignees,
+                    dependencies, activity, workload) and reports the main delivery risks
+                    with recommended actions.
+                </div>
+                <div class="alert alert-info" role="alert" invisible="scope != 'task'">
+                    <strong>Taskmaster Risk Agent.</strong>
+                    Reviews this single task (deadline, assignees, dependencies, subtasks,
+                    activity) and reports its risks with recommended actions.
+                </div>
+                <group>
+                    <field name="project_id" invisible="scope != 'project'" required="scope == 'project'"/>
+                    <field name="task_id" invisible="scope != 'task'" required="scope == 'task'"/>
+                </group>
+                <field name="result" nolabel="1" invisible="not result"/>
+                <footer>
+                    <button name="action_run" type="object" string="Run risk analysis"
+                            class="btn-primary" data-hotkey="q"/>
+                    <button string="Close" special="cancel" data-hotkey="x"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="taskmaster_risk_wizard_action" model="ir.actions.act_window">
+        <field name="name">Taskmaster: Risk agent</field>
+        <field name="res_model">taskmaster.risk.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

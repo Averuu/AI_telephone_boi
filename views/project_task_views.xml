@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Docs: .../tutorials/server_framework_101/12_inheritance.html and
+        .../reference/user_interface/view_records.html (inheritance)
+   - an extension view references its parent via inherit_id; its arch holds xpath
+     elements that select and alter the parent's content
+  Docs: .../reference/user_interface/view_architectures.html (kanban, header)
+   - <header> inserts buttons into the control panel; display="always" keeps the
+     button visible even though kanban records cannot be selected
+  NOTE: parent view ids (project.view_task_kanban, project.view_task_form2) come from the
+  'project' addon source, NOT from the docs -> verify them on your 20.0 database
+  (developer mode > "Edit View").
+-->
+<odoo>
+    <!-- Button 1: above the tasks of a project (task kanban, control panel) -->
+    <record id="view_task_kanban_taskmaster" model="ir.ui.view">
+        <field name="name">project.task.kanban.taskmaster</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//kanban" position="inside">
+                <header>
+                    <button name="%(taskmaster.taskmaster_risk_wizard_action)d" type="action"
+                            string="Risk analysis" display="always"
+                            context="{'default_scope': 'project'}"/>
+                </header>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Button 2: task form, status bar -->
+    <record id="view_task_form2_taskmaster" model="ir.ui.view">
+        <field name="name">project.task.form.taskmaster</field>
+        <field name="model">project.task</field>
+        <field name="inherit_id" ref="project.view_task_form2"/>
+        <field name="arch" type="xml">
+            <xpath expr="//header" position="inside">
+                <button name="%(taskmaster.taskmaster_risk_wizard_action)d" type="action"
+                        string="Risk analysis"
+                        context="{'default_scope': 'task', 'default_task_id': id}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
