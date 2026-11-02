@@ -91,6 +91,47 @@ class TaskmasterAgent(models.AbstractModel):
             return task.user_id
         return self.env['res.users']
 
+    @api.model
+    def _summary_html(self, summary):
+        """One compact line with the three headline counters."""
+        return Markup(
+            '<div class="d-flex flex-wrap gap-2 mb-3">'
+            '<span class="badge rounded-pill bg-secondary fs-6">%s: %s</span>'
+            '<span class="badge rounded-pill bg-danger fs-6">%s: %s</span>'
+            '<span class="badge rounded-pill bg-warning text-dark fs-6">%s: %s</span>'
+            '</div>'
+        ) % (
+            _('Open'), summary['open'],
+            _('Overdue'), summary['overdue'],
+            _('Unassigned'), summary['unassigned'],
+        )
+
+    @api.model
+    def _task_summary(self, snap):
+        """Adapt a single-task snapshot to the same counter shape as a project."""
+        return {
+            'open': 0 if snap['closed'] else 1,
+            'overdue': 1 if 'overdue' in snap['signals'] else 0,
+            'unassigned': 1 if 'no_assignee' in snap['signals'] else 0,
+        }
+
+    @api.model
+    def _signal_badge(self, code):
+        colors = {
+            'overdue': 'bg-danger',
+            'blocked': 'bg-warning text-dark',
+            'overallocated': 'bg-warning text-dark',
+            'due_soon': 'bg-warning text-dark',
+            'no_assignee': 'bg-warning text-dark',
+            'stale': 'bg-secondary',
+            'no_deadline': 'bg-secondary',
+        }
+        labels = self._signal_labels()
+        return Markup('<span class="badge %s me-1">%s</span>') % (
+            colors.get(code, 'bg-secondary'),
+            labels.get(code, code),
+        )
+
     # ------------------------------------------------------------------
     # 1. facts + rule-based signals
     # ------------------------------------------------------------------
@@ -182,38 +223,53 @@ class TaskmasterAgent(models.AbstractModel):
     # 2. rule-based report (HTML; Html fields sanitize on write)
     # ------------------------------------------------------------------
     @api.model
-    def _rules_html_project(self, summary, risky):
-        labels = self._signal_labels()
-        head = Markup('<p><b>%s</b>: %s</p>') % (
-            _('Rule-based overview'),
-            _('%(open)s open tasks, %(overdue)s overdue, %(unassigned)s unassigned',
-              open=summary['open'], overdue=summary['overdue'], unassigned=summary['unassigned']),
-        )
+    def _rules_html_project(self, risky):
         if not risky:
-            return head + Markup('<p>%s</p>') % _('No risk signals found.')
+            return Markup('<p class="mb-0 text-muted">%s</p>') % _('No risk signals found.')
         items = Markup('').join(
-            Markup('<li><b>%s</b> — %s</li>') % (s['name'], ', '.join(labels[c] for c in s['signals']))
+            Markup('<li class="mb-2"><b>%s</b><br/>%s</li>') % (
+                s['name'],
+                Markup(' ').join(self._signal_badge(code) for code in s['signals']),
+            )
             for s in risky[:15]
         )
-        return head + Markup('<ul>%s</ul>') % items
+        return Markup('<ul class="mb-0 ps-3">%s</ul>') % items
 
     @api.model
     def _rules_html_task(self, snap):
-        labels = self._signal_labels()
         if not snap['signals']:
-            return Markup('<p>%s</p>') % _('No risk signals found for this task.')
-        items = Markup('').join(Markup('<li>%s</li>') % labels[c] for c in snap['signals'])
-        return Markup('<p><b>%s</b></p><ul>%s</ul>') % (_('Rule-based signals'), items)
+            return Markup('<p class="mb-0 text-muted">%s</p>') % _('No risk signals found for this task.')
+        items = Markup('').join(
+            Markup('<li class="mb-1">%s</li>') % self._signal_badge(code)
+            for code in snap['signals']
+        )
+        return Markup('<ul class="mb-0 ps-3">%s</ul>') % items
 
     # ------------------------------------------------------------------
     # 3. optional LLM narrative (OpenAI-compatible chat completions)
     #    config: System Parameters taskmaster.api_key / api_url / model
     # ------------------------------------------------------------------
     @api.model
+    def _llm_error_text(self, exc):
+        """Short, safe reason shown in the wizard (details stay in the log)."""
+        if isinstance(exc, requests.Timeout):
+            return _('The AI service did not respond within %s seconds.', LLM_TIMEOUT)
+        if isinstance(exc, requests.HTTPError):
+            response = getattr(exc, 'response', None)
+            if response is not None:
+                return _('The AI service returned HTTP %s.', response.status_code)
+            return _('The AI service returned an HTTP error.')
+        if isinstance(exc, requests.ConnectionError):
+            return _('Could not connect to the AI service.')
+        if isinstance(exc, (KeyError, IndexError, ValueError)):
+            return _('The AI service returned an unexpected response.')
+        return _('The AI request failed.')
+
+    @api.model
     def _call_llm(self, kind, payload):
         api_key = self._config('taskmaster.api_key')
         if not api_key:
-            return False
+            return False, _('API key is not configured.')
         url = self._config('taskmaster.api_url') or 'https://api.openai.com/v1/chat/completions'
         model = self._config('taskmaster.model') or 'gpt-4o-mini'
         lang = self.env.user.lang or 'en_US'
@@ -242,19 +298,35 @@ class TaskmasterAgent(models.AbstractModel):
                 timeout=LLM_TIMEOUT,
             )
             resp.raise_for_status()
-            return resp.json()['choices'][0]['message']['content']
+            return resp.json()['choices'][0]['message']['content'], None
         except (requests.RequestException, KeyError, IndexError, ValueError) as exc:
             _logger.warning("Taskmaster: LLM call failed: %s", exc)
-            return False
+            return False, self._llm_error_text(exc)
 
     @api.model
-    def _compose(self, rules_html, llm_html):
+    def _compose(self, summary_html, llm_html, rules_html, llm_error=None):
+        parts = [summary_html]
         if llm_html:
-            return '%s<hr/>%s' % (llm_html, rules_html)
-        note = Markup('<p><i>%s</i></p>') % _(
-            'AI narrative is not available (no API key configured or the service failed); '
-            'showing the rule-based result only.')
-        return '%s%s' % (rules_html, note)
+            parts.append(
+                Markup('<div class="border rounded p-3 mb-3">'
+                       '<div class="fw-bold mb-2">%s</div>%s</div>') % (
+                    _('AI analysis'), Markup(llm_html))
+            )
+        else:
+            reason = llm_error or _('The AI request failed.')
+            parts.append(
+                Markup('<div class="alert alert-warning mb-3" role="alert">'
+                       '<b>%s</b> %s<br/>'
+                       '<span class="small">%s</span></div>') % (
+                    _('AI analysis is unavailable:'), reason,
+                    _('Showing the rule-based result only.'),
+                )
+            )
+        parts.append(
+            Markup('<div><div class="fw-bold mb-2">%s</div>%s</div>') % (
+                _('Rule-based signals'), rules_html)
+        )
+        return Markup('').join(parts)
 
     # ------------------------------------------------------------------
     # public entry points used by the wizard
@@ -262,16 +334,16 @@ class TaskmasterAgent(models.AbstractModel):
     @api.model
     def analyze_project(self, project):
         summary, risky = self._collect_project(project)
-        rules = self._rules_html_project(summary, risky)
-        llm = self._call_llm('project', {
+        rules = self._rules_html_project(risky)
+        llm, llm_error = self._call_llm('project', {
             'summary': summary,
             'risky_tasks': risky[:MAX_TASKS_IN_PROMPT],
         })
-        return self._compose(rules, llm)
+        return self._compose(self._summary_html(summary), llm, rules, llm_error)
 
     @api.model
     def analyze_task(self, task):
         snap = self._collect_task(task)
         rules = self._rules_html_task(snap)
-        llm = self._call_llm('task', snap)
-        return self._compose(rules, llm)
+        llm, llm_error = self._call_llm('task', snap)
+        return self._compose(self._summary_html(self._task_summary(snap)), llm, rules, llm_error)

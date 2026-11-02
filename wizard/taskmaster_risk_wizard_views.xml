@@ -28,7 +28,12 @@
                     <field name="project_id" invisible="scope != 'project'" required="scope == 'project'"/>
                     <field name="task_id" invisible="scope != 'task'" required="scope == 'task'"/>
                 </group>
-                <field name="result" nolabel="1" invisible="not result"/>
+                <div class="o_taskmaster_result">
+                    <field name="result" nolabel="1" invisible="not result"/>
+                </div>
+                <div class="text-muted small mt-2 d-none o_taskmaster_run_hint">
+                    Analysis may take up to a minute.
+                </div>
                 <footer>
                     <button name="action_run" type="object" string="Run risk analysis"
                             class="btn-primary" data-hotkey="q"/>

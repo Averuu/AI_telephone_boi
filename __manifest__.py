@@ -21,6 +21,11 @@
         'views/project_task_views.xml',
     ],
     'external_dependencies': {'python': ['requests']},
+    'assets': {
+        'web.assets_backend': [
+            'taskmaster/static/src/js/risk_wizard.js',
+        ],
+    },
     'application': False,
     'installable': True,
 }

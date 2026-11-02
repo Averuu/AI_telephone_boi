@@ -39,6 +39,9 @@ class TaskmasterRiskWizard(models.TransientModel):
 
     def action_run(self):
         self.ensure_one()
+        # Drop the previous report immediately: the dialog may keep showing it
+        # while the new (potentially slow) analysis is running.
+        self.result = False
         agent = self.env['taskmaster.agent']
         if self.scope == 'task':
             if not self.task_id:
